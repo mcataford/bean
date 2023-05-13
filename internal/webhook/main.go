@@ -40,11 +40,23 @@ type WebhookRequestBody struct {
 	ChannelId     string          `json:"channel_id"`
 }
 
+type InteractionResponseData struct {
+	Content string `json:"content"`
+}
+
+type InteractionResponse struct {
+	Type int                     `json:"type"`
+	Data InteractionResponseData `json:"data"`
+}
+
 func Respond(responseWriter http.ResponseWriter, request *http.Request, message []byte, statusCode int) {
 	requestUrl := request.URL
 
 	log.Println(fmt.Sprintf("%s - %d", requestUrl, statusCode))
-	responseWriter.WriteHeader(statusCode)
+	if statusCode != 200 {
+		responseWriter.WriteHeader(statusCode)
+	}
+	responseWriter.Header().Set("Content-Type", "application/json")
 	responseWriter.Write(message)
 }
 
@@ -83,18 +95,25 @@ func handlePing(response http.ResponseWriter, request *http.Request, body string
 		Respond(response, request, []byte{}, 401)
 	}
 
-    Respond(response, request, responseJson, 200)
+	Respond(response, request, responseJson, 200)
 }
 
-func handleRUOk(channelId string) {
-	sendMessage("Meow", channelId)
+func handleRUOk(response http.ResponseWriter, request *http.Request) {
+	responseBody := InteractionResponse{
+		Type: 4,
+		Data: InteractionResponseData{Content: "Meow"},
+	}
+
+	jsonJson, _ := json.Marshal(responseBody)
+
+	Respond(response, request, jsonJson, 200)
 }
 
-func handleInteraction(interactionData InteractionData, channel string) {
+func handleInteraction(response http.ResponseWriter, request *http.Request, interactionData InteractionData) {
 	log.Println(fmt.Sprintf("Handling interaction: %s", interactionData.Name))
 	switch interactionData.Name {
 	case "ruok":
-		handleRUOk(channel)
+		handleRUOk(response, request)
 	}
 }
 
@@ -113,12 +132,10 @@ func handleWebhook(response http.ResponseWriter, request *http.Request) {
 	case 1:
 		handlePing(response, request, string(body))
 	case 2:
-		handleInteraction(requestBody.Data, requestBody.ChannelId)
+		handleInteraction(response, request, requestBody.Data)
 	default:
 		Respond(response, request, []byte{}, 400)
 	}
-
-	Respond(response, request, []byte{}, 200)
 }
 
 func ListenToWebhook(host string) error {
