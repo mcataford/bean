@@ -1,5 +1,8 @@
+<p align="center"><img src="./assets/bean.png" alt="Bean!"/></p>
+
 # bean
 Fancy Discord bot for personal use
+
 
 ## Setup
 
