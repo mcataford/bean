@@ -49,6 +49,10 @@ type InteractionResponse struct {
 	Data InteractionResponseData `json:"data"`
 }
 
+// Standardized response writing function.
+//
+// Handles writing the response, status and headers, as well
+// as logging.
 func Respond(responseWriter http.ResponseWriter, request *http.Request, message []byte, statusCode int) {
 	requestUrl := request.URL
 
@@ -78,7 +82,7 @@ func verifyInteractionSignature(publicKey string, message string, signature stri
 
 // Handles verification interactions and pings from Discord.
 func handlePing(response http.ResponseWriter, request *http.Request, body string) {
-	responseBody := map[string]int{"type": 1}
+	responseBody := InteractionResponse{Type: 1}
 	responseJson, _ := json.Marshal(responseBody)
 	signature := request.Header["X-Signature-Ed25519"][0]
 	timestamp := request.Header["X-Signature-Timestamp"][0]
@@ -91,6 +95,7 @@ func handlePing(response http.ResponseWriter, request *http.Request, body string
 		log.Fatal("No public key supplied, must be available as DISCORD_APP_PUBLIC_KEY")
 	}
 
+	// FIXME: This should be moved to a middleware so it applies to all requests.
 	if !verifyInteractionSignature(publicKey, message, signature) {
 		Respond(response, request, []byte{}, 401)
 	}
@@ -98,17 +103,28 @@ func handlePing(response http.ResponseWriter, request *http.Request, body string
 	Respond(response, request, responseJson, 200)
 }
 
+// Bot healthcheck interaction
+//
+// Acknowledges the request and returns a static message.
 func handleRUOk(response http.ResponseWriter, request *http.Request) {
 	responseBody := InteractionResponse{
 		Type: 4,
 		Data: InteractionResponseData{Content: "Meow"},
 	}
 
-	jsonJson, _ := json.Marshal(responseBody)
+	jsonBody, err := json.Marshal(responseBody)
 
-	Respond(response, request, jsonJson, 200)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	Respond(response, request, jsonBody, 200)
 }
 
+// Top-level handler for interaction requests. Cases for different
+// interaction Name values are defined here. It is expected that
+// interaction request handlers will take care of writing the
+// HTTP response as appropriate for what they are implementing.
 func handleInteraction(response http.ResponseWriter, request *http.Request, interactionData InteractionData) {
 	log.Println(fmt.Sprintf("Handling interaction: %s", interactionData.Name))
 	switch interactionData.Name {
@@ -117,6 +133,11 @@ func handleInteraction(response http.ResponseWriter, request *http.Request, inte
 	}
 }
 
+// Top-level handlers for webhook requests.
+//
+// This consumes the request body and triages which
+// sub-handler should process the request. Because the body
+// is consumed, it must be passed directly to downstream handlers.
 func handleWebhook(response http.ResponseWriter, request *http.Request) {
 	// FIXME: Should do something about consuming the body. :(
 	body, _ := ioutil.ReadAll(request.Body)
@@ -138,6 +159,11 @@ func handleWebhook(response http.ResponseWriter, request *http.Request) {
 	}
 }
 
+// Listens and handles webhook requests received at '/' at the
+// provided host.
+//
+// This instantiates the server and returns any error that the
+// server process might return.
 func ListenToWebhook(host string) error {
 	mux := http.NewServeMux()
 
