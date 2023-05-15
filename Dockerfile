@@ -1,4 +1,4 @@
-FROM golang:1.19
+FROM golang:1.20
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 
-RUN go build ./cmd/bean.go
+RUN go build ./cmd/bean/bean.go
 
 EXPOSE 8080
 
