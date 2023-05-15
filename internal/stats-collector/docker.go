@@ -24,6 +24,10 @@ type DockerStatsSummary struct {
 	Services map[string]DockerServiceStats `json:"services"`
 }
 
+// Collects and formats data from `docker ps`. This requires `jq` to be installed
+// since the output of `docker ps` requires slurping to form a valid json array.
+//
+// This may return a report or an error, depending on circumstance.
 func collectDockerStats() (DockerStatsSummary, error) {
 	dockerPs := exec.Command("docker", "ps", "--format", "json")
 	jqSlurp := exec.Command("jq", "-s")

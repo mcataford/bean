@@ -14,6 +14,18 @@ var help = `beancounter <outputPath> <intervalSeconds>
 
 This tool will collect system statistics and create/update a report at <outputPath> every <intervalSeconds>.`
 
+// beancounter pulls data from the system at a set interval and writes a report
+// to a file. This file can then be exposed to the interactive bot's Docker container
+// so the data can be reported there.
+//
+// This expects a call signature: <executable> <path> <interval>
+//
+// A file is created or updated at <path> to container the latest report data and
+// the collection interval is <interval> seconds.
+//
+// If any of the input parameters are not as expected (i.e. fewer than 2, interval not a number, ...)
+// the program fails critically before starting the iteration. Errors during the iteration are
+// handled and logged.
 func main() {
 	if len(os.Args) != 3 {
 		fmt.Println(help)
